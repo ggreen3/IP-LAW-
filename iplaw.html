@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>IP Law AI - Kenya</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      width: 400px;
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 255, 150, 0.3);
+    }
+    .chat-header {
+      background-color: #333;
+      color: #00ff99;
+      text-align: center;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .chatbox {
+      height: 400px;
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .input-container {
+      display: flex;
+      padding: 10px;
+      background-color: #222;
+    }
+    .input-field {
+      flex-grow: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #333;
+      color: #e0e0e0;
+      font-size: 14px;
+      margin-right: 10px;
+    }
+    .send-button {
+      background-color: #00ff99;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .send-button:hover {
+      background-color: #00cc77;
+    }
+    .message-row {
+      display: flex;
+      margin: 8px 0;
+    }
+    .message-left .message-bubble {
+      background-color: #444;
+      color: #e0e0e0;
+      text-align: left;
+    }
+    .message-right .message-bubble {
+      background-color: #009966;
+      color: #fff;
+      text-align: right;
+      align-self: flex-end;
+    }
+    .message-bubble {
+      max-width: 80%;
+      padding: 10px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="chat-header">IP Law AI - Kenya</div>
+    <div id="chatbox" class="chatbox"></div>
+    <div class="input-container">
+      <input id="messageInput" class="input-field" type="text" placeholder="Ask about IP law in Kenya..." />
+      <button id="sendButton" class="send-button">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatbox = document.getElementById("chatbox");
+    const messageInput = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+    const chatId = crypto.randomUUID();
+
+    let receiving = false;
+
+    // IP Law Specialist System Prompt
+    const systemPrompt = "You are a highly knowledgeable AI specialized in Intellectual Property Law in Kenya. \
+    You provide expert legal guidance on trademarks, patents, copyrights, industrial designs, and IP litigation under \
+    Kenyan law. Your responses are precise, professional, and focused on practical legal solutions.";
+
+    function createMessageElement(text, alignment) {
+      const messageRow = document.createElement("div");
+      messageRow.className = `message-row ${alignment === "left" ? "message-left" : "message-right"}`;
+
+      const messageBubble = document.createElement("div");
+      messageBubble.className = `message-bubble ${alignment === "left" ? "message-left" : "message-right"}`;
+      messageBubble.textContent = text;
+
+      messageRow.appendChild(messageBubble);
+      return messageRow;
+    }
+
+    function connectWebSocket(message) {
+      receiving = true;
+      const url = "wss://backend.buildpicoapps.com/api/chatbot/chat";
+      const websocket = new WebSocket(url);
+
+      websocket.addEventListener("open", () => {
+        websocket.send(
+          JSON.stringify({
+            chatId: chatId,
+            appId: "after-consumer",
+            systemPrompt: systemPrompt,
+            message: message,
+          })
+        );
+      });
+
+      const messageElement = createMessageElement("", "left");
+      chatbox.appendChild(messageElement);
+
+      websocket.onmessage = (event) => {
+        const responseText = event.data;
+        messageElement.innerText += responseText;
+        chatbox.scrollTop = chatbox.scrollHeight;
+      };
+
+      websocket.onclose = (event) => {
+        if (event.code === 1000) {
+          receiving = false;
+        } else {
+          messageElement.textContent += " Error getting response from server. Refresh the page and try again.";
+          chatbox.scrollTop = chatbox.scrollHeight;
+          receiving = false;
+        }
+      };
+    }
+
+    sendButton.addEventListener("click", () => {
+      if (!receiving && messageInput.value.trim() !== "") {
+        const messageText = messageInput.value.trim();
+        messageInput.value = "";
+        const messageElement = createMessageElement(messageText, "right");
+        chatbox.appendChild(messageElement);
+        chatbox.scrollTop = chatbox.scrollHeight;
+
+        connectWebSocket(messageText);
+      }
+    });
+
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !receiving && messageInput.value.trim() !== "") {
+        event.preventDefault();
+        sendButton.click();
+      }
+    });
+  </script>
+</body>
+</html>
